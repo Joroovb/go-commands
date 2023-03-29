@@ -1,0 +1,42 @@
+resources:
+  - name: repo
+    type: git
+    source:
+      uri: https://github.com/joroovb/go-utils
+
+  - name: command-repo
+    type: git
+    source:
+      uri: https://github.com/joroovb/go-commands
+
+  - name: go-image
+    type: registry-image
+    source:
+      repository: golang
+      tag: 1.19-alpine3.16
+
+jobs:
+  - name: test-utils-package
+    plan:
+      - get: repo
+        trigger: true
+      - task: test-utils
+        file: repo/test-utils.yml
+  - name: build-commands-package
+    plan:
+      - get: go-image
+      - get: repo
+        passed: [test-utils-package]
+        trigger: true
+      - get: command-repo
+        trigger: true
+      - task: build-package
+        image: go-image
+        config:
+          platform: linux
+          inputs:
+            - name: command-repo
+          run:
+            path: go
+            args: ["build", "-v", "./..."]
+            dir: command-repo
